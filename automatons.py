@@ -15,7 +15,7 @@ mapping.set_map(size,map_file)
 
 buffer = 1
 
-colors = [RED,MAGENTA,GREY,ORANGE]
+colors = [RED,MAGENTA,WHITE,ORANGE]
 tiles = []
 tiledict = {x: [] for x in range(n_tiles_x)}
 cells = []
@@ -94,9 +94,19 @@ class City(object):
         for tile in self.tile.tiles_in_radius(city_buff_radius):
             tile.has_city_buff = new_faction
 
+    def produce(self):
+        eligible_tiles = [n for n in self.tile.get_neighbors() if n.is_ground]
+        if eligible_tiles:
+            Cell(self.faction,random.choice(eligible_tiles))
+
     def display(self):
         pygame.draw.circle(main_s,BLACK,self.tile.rect.center,(size+2))
         pygame.draw.circle(main_s,self.faction.color,self.tile.rect.center,size)
+
+class Capital(object):
+    def __init__(self,faction,tile):
+        City.__init__(self,faction,tile)
+        self.faction.city_counter = 0
 
 class Faction(object):
     def __init__(self,color):
@@ -107,8 +117,9 @@ class Faction(object):
         factions.append(self)
 
     def make_city(self):
-        eligible_cells = [c for c in self.cells if c.tile.has_city_buff != self]
-        City(self,random.choice(eligible_cells).tile)
+        eligible_tiles = [c.tile for c in self.cells if not c.tile.has_city_buff]
+        if eligible_tiles:
+            City(self,random.choice(eligible_tiles))
 
     def city_check(self):
         if (len(self.cells) // city_threshold) > self.city_counter:
@@ -154,7 +165,7 @@ class Cell(object):
 
     def move(self):
         possibles = [n for n in self.tile.get_neighbors()]
-        if len([p for p in possibles if p.has_cell]) > max_neighbors:
+        if len([p for p in possibles if p.has_cell]) > max_neighbors or self.get_strength() == 0:
             self.die()
         else:
             t = random.choice(possibles)
@@ -215,19 +226,19 @@ def stream_check_mouse():
     tiledict[x][y].stream_check()
 
 def gen_cell():
-    for i in range(5):
+    for i in range(3):
         for f in factions:
-            Cell(f,tiledict[random.randrange(n_tiles_x)][random.randrange(n_tiles_y)])
+            home_square = random.choice([t for t in tiles if t.is_ground])
+            Cell(f,home_square)
 
 game_loop,main_s = pgd_init(width,height,input_dict={"r":gen_cell,"f":flip_at_mouse,"s":stream_check_mouse})
 
-gen_cell()
+for f in factions:
+    home_square = random.choice([t for t in tiles if t.is_ground and not t.has_city_buff])
+    City(f,home_square)
 
 for ocean in oceans:
     ocean.stream_check()
-
-#for t in tiledict[n_tiles_x//2][n_tiles_y//2].tiles_in_radius(2):
-#    t.color = WHITE
 
 @game_loop
 def step():
@@ -237,6 +248,7 @@ def step():
         cell.display()
         cell.move()
     for city in cities:
+        city.produce()
         city.display()
     for faction in factions:
         faction.city_check()
