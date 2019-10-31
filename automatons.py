@@ -20,6 +20,7 @@ ground_chance = 0.8
 city_threshold = 100
 city_buff = 3
 city_buff_radius = 3
+max_neighbors = 4
 
 class Tile(object):
     def __init__(self,x,y):
@@ -147,17 +148,20 @@ class Cell(object):
 
     def move(self):
         possibles = [n for n in self.tile.get_neighbors()]
-        t = random.choice(possibles)
-        if t.is_ground:
-            if not t.has_cell:
-                Cell(self.faction,t)
-            else:
-                if self.fight(t.has_cell):
-                    Cell(self.faction,t)
-        else:
+        if len([p for p in possibles if p.has_cell]) > max_neighbors:
             self.die()
-        if self.strength > 0:
-            self.strength -= 1
+        else:
+            t = random.choice(possibles)
+            if t.is_ground:
+                if not t.has_cell:
+                    Cell(self.faction,t)
+                else:
+                    if self.fight(t.has_cell):
+                        Cell(self.faction,t)
+            else:
+                self.die()
+            if self.strength > 0:
+                self.strength -= 1
 
 
     def display(self):
