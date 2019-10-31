@@ -2,16 +2,18 @@ from PIL import Image
 
 im = Image.open("usa2.png")
 
-num_x = 800//12
-num_y = 800//12
+size = 12
+
+num_x = 800//size
+num_y = 800//size
 
 
 with open("themap.txt","w") as newfile:
     for y in range(num_y):
         for x in range(num_x):
             tally = []
-            for ny in range(y*12,(y+1)*12):
-                for nx in range(x*12,(x+1)*12):
+            for ny in range(y*size,(y+1)*size):
+                for nx in range(x*size,(x+1)*size):
                     pix = im.getpixel((nx,ny))
                     if pix == (0,0,255):
                         tally.append("b")
