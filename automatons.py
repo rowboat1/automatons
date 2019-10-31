@@ -1,5 +1,6 @@
 from pygamedefaults import *
 import random
+import create_map
 
 width,height = 800,800
 
