@@ -4,7 +4,7 @@ import mapping
 
 width,height = 800,800
 
-size = 12
+size = 8
 
 n_tiles_x = width//size
 n_tiles_y = height//size
@@ -56,6 +56,9 @@ class Tile(object):
             for tile in a:
                 retval += tile.get_neighbors()
         return retval
+
+    def get_direction(self,other):
+        return ((self.x-other.x)<0,(self.y-other.y)<0)
 
     def display(self):
         pygame.draw.rect(main_s,self.color,self.rect)
@@ -116,10 +119,31 @@ class Faction(object):
         self.cities = []
         factions.append(self)
 
+    def get_centre_of_cells(self):
+        all_x = [c.tile.x for c in self.cells]
+        all_y = [c.tile.y for c in self.cells]
+        c_x = sum(all_x)//len(all_x)
+        c_y = sum(all_y)//len(all_y)
+        return (c_x,c_y)
+
+    def get_centre_of_cities(self):
+        all_x = [c.tile.x for c in self.cities]
+        all_y = [c.tile.y for c in self.cities]
+        c_x = sum(all_x)//len(all_x)
+        c_y = sum(all_y)//len(all_y)
+        return (c_x,c_y)
+
+    def best_city_tiles(self):
+        c1 = self.get_centre_of_cells()
+        c_cells = tiledict[c1[0]][c1[1]]
+        c2 = self.get_centre_of_cities()
+        c_cities = tiledict[c2[0]][c2[1]]
+        t1 = c_cells.get_direction(c_cities)
+        my_tiles = [c.tile for c in self.cells]
+        return [t for t in my_tiles if t.get_direction(c_cells) == t1 and not t.has_city_buff]
+
     def make_city(self):
-        eligible_tiles = [c.tile for c in self.cells if not c.tile.has_city_buff]
-        if eligible_tiles:
-            City(self,random.choice(eligible_tiles))
+        City(self,random.choice(self.best_city_tiles()))
 
     def city_check(self):
         if (len(self.cells) // city_threshold) > self.city_counter:
