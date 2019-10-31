@@ -1,6 +1,6 @@
 from pygamedefaults import *
 import random
-import create_map
+import mapping
 
 width,height = 800,800
 
@@ -8,6 +8,11 @@ size = 12
 
 n_tiles_x = width//size
 n_tiles_y = height//size
+
+map_file = "usa2.png"
+
+mapping.set_map(size,map_file)
+
 buffer = 1
 
 colors = [RED,MAGENTA,GREY,ORANGE]
@@ -176,8 +181,8 @@ class Cell(object):
 #        else:
 #            Ocean(x,y)
 
-with open("themap.txt") as mapfile:
-    maplines = mapfile.readlines()
+with open("themap.txt") as map_string:
+    maplines = map_string.readlines()
     for x in range(len(maplines)):
         for y in range(len(maplines[x]) - 1):
             tile_type = maplines[x][y]
