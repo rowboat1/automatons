@@ -6,7 +6,7 @@ pygame.font.init()
 font = pygame.font.SysFont("", 20)
 pygame.init()
 
-for col in ['RED','BLUE','GREEN','MAGENTA','YELLOW','CYAN','BLACK','WHITE','ORANGE']:
+for col in ['RED','BLUE','GREEN','MAGENTA','YELLOW','CYAN','BLACK','WHITE','ORANGE','GREY']:
     vars()[col] = pygame.Color(col.lower())
 
 #run this function as game_loop,main_s = pgd_init(size,size)

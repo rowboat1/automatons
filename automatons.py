@@ -9,7 +9,7 @@ n_tiles_x = width//size
 n_tiles_y = height//size
 buffer = 1
 
-colors = [RED,MAGENTA,BLACK,ORANGE]
+colors = [RED,MAGENTA,GREY,ORANGE]
 tiles = []
 tiledict = {x: [] for x in range(n_tiles_x)}
 cells = []
@@ -19,6 +19,7 @@ oceans = []
 ground_chance = 0.8
 city_threshold = 100
 city_buff = 3
+city_buff_radius = 3
 
 class Tile(object):
     def __init__(self,x,y):
@@ -77,16 +78,17 @@ class City(object):
         tile.has_city = self
         self.faction.cities.append(self)
         self.faction.city_counter += 1
-        for tile in self.tile.tiles_in_radius(2):
+        for tile in self.tile.tiles_in_radius(city_buff_radius):
             tile.has_city_buff = self.faction
         cities.append(self)
 
     def swap_faction(self,new_faction):
         self.tile.has_city.faction = new_faction
-        for tile in self.tile.tiles_in_radius(2):
+        for tile in self.tile.tiles_in_radius(city_buff_radius):
             tile.has_city_buff = new_faction
 
     def display(self):
+        pygame.draw.circle(main_s,BLACK,self.tile.rect.center,(size+2))
         pygame.draw.circle(main_s,self.faction.color,self.tile.rect.center,size)
 
 class Faction(object):
@@ -98,7 +100,8 @@ class Faction(object):
         factions.append(self)
 
     def make_city(self):
-        City(self,random.choice(self.cells).tile)
+        eligible_cells = [c for c in self.cells if c.tile.has_city_buff != self]
+        City(self,random.choice(eligible_cells).tile)
 
     def city_check(self):
         if (len(self.cells) // city_threshold) > self.city_counter:
