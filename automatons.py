@@ -40,21 +40,16 @@ class Tile(object):
         tiles.append(self)
 
     def get_neighbors(self):
-        retval = []
-        x_start = 0 if (self.x == 0) else (self.x - 1)
-        x_end = self.x if (self.x == n_tiles_x-1) else self.x + 1
-        y_start = 0 if (self.y == 0) else (self.y - 1)
-        y_end = self.y if (self.y == n_tiles_y-1) else self.y + 1
-        for x in range(x_start, x_end+1):
-            retval += tiledict[x][y_start:y_end+1]
-        return retval
+        return self.tiles_in_radius(1)
 
     def tiles_in_radius(self,radius):
-        retval = [self]
-        for r in range(radius):
-            a = [t for t in retval]
-            for tile in a:
-                retval += tile.get_neighbors()
+        retval = []
+        x_start = max(0,self.x-radius)
+        x_end = min(n_tiles_x-1,self.x + radius)
+        y_start = max(0,self.y - radius)
+        y_end = min(n_tiles_y-1,self.y + radius)
+        for x in range(x_start, x_end+1):
+            retval += tiledict[x][y_start:y_end+1]
         return retval
 
     def get_direction(self,other):
