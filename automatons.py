@@ -61,24 +61,21 @@ class Tile(object):
 class Ground(Tile):
     def __init__(self,x,y):
         self.color = GREEN
-        self.is_ground = True
         Tile.__init__(self,x,y)
 
 class Ocean(Tile):
     def __init__(self,x,y):
         self.color = BLUE
-        self.is_ground = False
         oceans.append(self)
         Tile.__init__(self,x,y)
 
     def stream_check(self):
-        if [n.is_ground for n in self.get_neighbors()].count(False) == 1:
+        if [isinstance(n, Ground) for n in self.get_neighbors()].count(False) == 1:
             flip(self.x,self.y)
 
 class City(object):
     def __init__(self,faction,tile):
         self.faction = faction
-        self.is_ground = True
         self.tile = tile
         tile.has_city = self
         self.faction.cities.append(self)
@@ -98,7 +95,7 @@ class City(object):
             tile.has_city_buff = new_faction
 
     def produce(self):
-        eligible_tiles = [n for n in self.tile.get_neighbors() if n.is_ground]
+        eligible_tiles = [n for n in self.tile.get_neighbors() if isinstance(n, Ground)]
         if eligible_tiles:
             Cell(self.faction,random.choice(eligible_tiles))
 
@@ -205,7 +202,7 @@ class Cell(object):
             self.die()
         else:
             t = random.choice(possibles)
-            if t.is_ground:
+            if isinstance(t, Ground):
                 if not t.has_cell:
                     Cell(self.faction,t)
                 else:
@@ -243,7 +240,7 @@ for c in colors:
 
 def flip(x,y):
     target = tiledict[x][y]
-    if target.is_ground:
+    if isinstance(target,Ground):
         tiledict[x][y] = Ocean(x,y)
     else:
         tiledict[x][y] = Ground(x,y)
@@ -275,13 +272,13 @@ def stream_check_mouse():
 def gen_cell():
     for i in range(3):
         for f in factions:
-            home_square = random.choice([t for t in tiles if t.is_ground])
+            home_square = random.choice([t for t in tiles if isinstance(t, Ground)])
             Cell(f,home_square)
 
 game_loop,main_s = pgd_init(width,height,input_dict={"r":gen_cell,"f":flip_at_mouse,"s":stream_check_mouse,"q":split_faction})
 
 for f in factions:
-    home_square = random.choice([t for t in tiles if t.is_ground and not t.has_city_buff])
+    home_square = random.choice([t for t in tiles if isinstance(t,Ground) and not t.has_city_buff])
     City(f,home_square)
 
 for ocean in oceans:
