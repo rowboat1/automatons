@@ -4,7 +4,7 @@ import mapping
 
 width,height = 800,800
 
-size = 8
+size = 10
 
 n_tiles_x = width//size
 n_tiles_y = height//size
@@ -14,6 +14,7 @@ map_file = "usa2.png"
 mapping.set_map(size,map_file)
 
 buffer = 1
+adj_size = size-buffer
 
 colors = [RED,MAGENTA,WHITE,ORANGE]
 tiles = []
@@ -21,7 +22,6 @@ tiledict = {x: [] for x in range(n_tiles_x)}
 cells = []
 cities = []
 factions = []
-oceans = []
 ground_chance = 0.8
 city_threshold = 200
 city_buff = 3
@@ -35,7 +35,7 @@ class Tile(object):
         self.has_cell = None
         self.has_city = None
         self.has_city_buff = None
-        self.rect = pygame.Rect(self.x*size,self.y*size,(size-buffer),(size-buffer))
+        self.rect = pygame.Rect(self.x*size,self.y*size,adj_size,adj_size)
         tiledict[x].append(self)
         tiles.append(self)
 
@@ -66,11 +66,10 @@ class Ground(Tile):
 class Ocean(Tile):
     def __init__(self,x,y):
         self.color = BLUE
-        oceans.append(self)
         Tile.__init__(self,x,y)
 
     def stream_check(self):
-        if [isinstance(n, Ground) for n in self.get_neighbors()].count(False) == 1:
+        if len([isinstance(n,Ocean) for n in self.get_neighbors()]) == 1:
             flip(self.x,self.y)
 
 class City(object):
@@ -95,7 +94,9 @@ class City(object):
             tile.has_city_buff = new_faction
 
     def produce(self):
-        eligible_tiles = [n for n in self.tile.get_neighbors() if isinstance(n, Ground)]
+        eligible_tiles = [
+            n for n in self.tile.get_neighbors() if isinstance(n, Ground)
+        ]
         if eligible_tiles:
             Cell(self.faction,random.choice(eligible_tiles))
 
@@ -131,8 +132,12 @@ class Faction(object):
         return (c_x,c_y)
 
     def split(self,new_faction):
-        c_cells,c_cities = self.get_centre_of_cells(),self.get_centre_of_cities()
-        true_centre = ((c_cells[0] + c_cities[0])//2,(c_cells[1] + c_cities[1])//2)
+        c_cells = self.get_centre_of_cells()
+        c_cities = self.get_centre_of_cities()
+        true_centre = (
+            (c_cells[0] + c_cities[0])//2,
+            (c_cells[1] + c_cities[1])//2
+        )
         for c in self.cells + self.cities:
             if c.tile.x <= true_centre[0]:
                 c.join_faction(new_faction)
@@ -143,8 +148,8 @@ class Faction(object):
         c2 = self.get_centre_of_cities()
         c_cities = tiledict[c2[0]][c2[1]]
         t1 = c_cells.get_direction(c_cities)
-        my_tiles = [c.tile for c in self.cells]
-        return [t for t in my_tiles if t.get_direction(c_cells) == t1 and not t.has_city_buff]
+        my_tiles = [c.tile for c in self.cells if not c.tile.has_city_buff]
+        return [t for t in my_tiles if t.get_direction(c_cells) == t1]
 
     def make_city(self):
         City(self,random.choice(self.best_city_tiles()))
@@ -196,9 +201,19 @@ class Cell(object):
             retval = False
         return retval
 
+    def death_check(self):
+        retval = False
+        crowd = len([n for n in self.tile.get_neighbors() if n.has_cell])
+        if crowd > max_neighbors:
+            retval = True
+        elif self.get_strength() == 0:
+            retval = True
+        return retval
+
     def move(self):
         possibles = [n for n in self.tile.get_neighbors()]
-        if len([p for p in possibles if p.has_cell]) > max_neighbors or self.get_strength() == 0:
+        #I'd like to simplify so there's only one self.die() call
+        if self.death_check():
             self.die()
         else:
             t = random.choice(possibles)
@@ -272,16 +287,27 @@ def stream_check_mouse():
 def gen_cell():
     for i in range(3):
         for f in factions:
-            home_square = random.choice([t for t in tiles if isinstance(t, Ground)])
+            home_square = random.choice(
+                [t for t in tiles if isinstance(t, Ground)]
+            )
             Cell(f,home_square)
 
-game_loop,main_s = pgd_init(width,height,input_dict={"r":gen_cell,"f":flip_at_mouse,"s":stream_check_mouse,"q":split_faction})
+all_inputs = {
+    "r":gen_cell,
+    "f":flip_at_mouse,
+    "s":stream_check_mouse,
+    "q":split_faction
+}
+
+game_loop,main_s = pgd_init(width,height,input_dict=all_inputs)
 
 for f in factions:
-    home_square = random.choice([t for t in tiles if isinstance(t,Ground) and not t.has_city_buff])
+    home_square = random.choice(
+        [t for t in tiles if isinstance(t,Ground) and not t.has_city_buff]
+    )
     City(f,home_square)
 
-for ocean in oceans:
+for ocean in [t for t in tiles if isinstance(t,Ocean)]:
     ocean.stream_check()
 
 @game_loop
