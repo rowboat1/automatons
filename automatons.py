@@ -23,7 +23,7 @@ cities = []
 factions = []
 oceans = []
 ground_chance = 0.8
-city_threshold = 100
+city_threshold = 200
 city_buff = 3
 city_buff_radius = 3
 max_neighbors = 4
@@ -87,6 +87,11 @@ class City(object):
             tile.has_city_buff = self.faction
         cities.append(self)
 
+    def join_faction(self,new_faction):
+        self.faction.cities.remove(self)
+        self.faction = new_faction
+        self.faction.cities.append(self)
+
     def swap_faction(self,new_faction):
         self.tile.has_city.faction = new_faction
         for tile in self.tile.tiles_in_radius(city_buff_radius):
@@ -128,6 +133,13 @@ class Faction(object):
         c_y = sum(all_y)//len(all_y)
         return (c_x,c_y)
 
+    def split(self,new_faction):
+        c_cells,c_cities = self.get_centre_of_cells(),self.get_centre_of_cities()
+        true_centre = ((c_cells[0] + c_cities[0])//2,(c_cells[1] + c_cities[1])//2)
+        for c in self.cells + self.cities:
+            if c.tile.x <= true_centre[0]:
+                c.join_faction(new_faction)
+
     def best_city_tiles(self):
         c1 = self.get_centre_of_cells()
         c_cells = tiledict[c1[0]][c1[1]]
@@ -157,6 +169,11 @@ class Cell(object):
             self.tile.has_city.swap_faction(self.faction)
         self.faction.cells.append(self)
         cells.append(self)
+
+    def join_faction(self,new_faction):
+        self.faction.cells.remove(self)
+        self.faction = new_faction
+        self.faction.cells.append(self)
 
     def die(self):
         cells.remove(self)
@@ -238,6 +255,17 @@ def flip_at_mouse():
     y = y//size
     flip(x,y)
 
+def split_faction():
+    a = [f for f in factions if len(f.cells) == 0]
+    if a:
+        revived = a[0]
+        biggest = max(factions,key=lambda f:len(f.cells))
+        biggest.split(revived)
+    #If one faction is dead
+    #get the biggest faction
+    #take the average of its centre of cities and cells
+    #all cities and all cells to one side of it will split into the dead faction
+
 def stream_check_mouse():
     x,y = pygame.mouse.get_pos()
     x = x//size
@@ -250,7 +278,7 @@ def gen_cell():
             home_square = random.choice([t for t in tiles if t.is_ground])
             Cell(f,home_square)
 
-game_loop,main_s = pgd_init(width,height,input_dict={"r":gen_cell,"f":flip_at_mouse,"s":stream_check_mouse})
+game_loop,main_s = pgd_init(width,height,input_dict={"r":gen_cell,"f":flip_at_mouse,"s":stream_check_mouse,"q":split_faction})
 
 for f in factions:
     home_square = random.choice([t for t in tiles if t.is_ground and not t.has_city_buff])
