@@ -232,23 +232,26 @@ class Cell(object):
     def display(self):
         pygame.draw.rect(main_s,self.color,self.tile.rect)
 
-#for x in range(n_tiles_x):
-#    for y in range(n_tiles_y):
-#        ground_roll = random.uniform(0,1)
-#        if ground_roll < ground_chance:
-#            Ground(x,y)
-#        else:
-#            Ocean(x,y)
 
-with open("themap.txt") as map_string:
-    maplines = map_string.readlines()
-    for x in range(len(maplines)):
-        for y in range(len(maplines[x]) - 1):
-            tile_type = maplines[x][y]
-            if tile_type == "g":
-                Ground(y,x)
-            else:
-                Ocean(y,x)
+if map_file:
+    with open("themap.txt") as map_string:
+        maplines = map_string.readlines()
+        for y in range(len(maplines)):
+            for x in range(len(maplines[y]) - 1):
+                tile_type = maplines[y][x]
+                if tile_type == "g":
+                    Ground(x,y)
+                else:
+                    Ocean(x,y)
+else:
+    for x in range(n_tiles_x):
+       for y in range(n_tiles_y):
+           ground_roll = random.uniform(0,1)
+           if ground_roll < ground_chance:
+               Ground(x,y)
+           else:
+               Ocean(x,y)
+
 
 for c in colors:
     Faction(c)
@@ -273,10 +276,6 @@ def split_faction():
         revived = a[0]
         biggest = max(factions,key=lambda f:len(f.cells))
         biggest.split(revived)
-    #If one faction is dead
-    #get the biggest faction
-    #take the average of its centre of cities and cells
-    #all cities and all cells to one side of it will split into the dead faction
 
 def stream_check_mouse():
     x,y = pygame.mouse.get_pos()
