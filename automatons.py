@@ -39,6 +39,11 @@ class Tile(object):
         tiledict[x].append(self)
         tiles.append(self)
 
+    def get_adjacent_grounds(self):
+        neighbors = self.get_neighbors()
+        grounds = [n for n in neighbors if isinstance(n, Ground)]
+        return grounds
+
     def get_neighbors(self):
         return self.tiles_in_radius(1)
 
@@ -83,22 +88,22 @@ class City(object):
             tile.has_city_buff = self.faction
         cities.append(self)
 
-    def join_faction(self,new_faction):
-        self.faction.cities.remove(self)
-        self.faction = new_faction
-        self.faction.cities.append(self)
-
     def swap_faction(self,new_faction):
-        self.tile.has_city.faction = new_faction
         for tile in self.tile.tiles_in_radius(city_buff_radius):
             tile.has_city_buff = new_faction
+        self.faction.cities.remove(self)
+        self.faction = new_faction
+        new_faction.cities.append(self)
 
     def produce(self):
         eligible_tiles = [
             n for n in self.tile.get_neighbors() if isinstance(n, Ground)
         ]
         if eligible_tiles:
-            Cell(self.faction,random.choice(eligible_tiles))
+            if self.faction.color == RED:
+                Attacker(self.faction,random.choice(eligible_tiles))
+            else:
+                Cell(self.faction,random.choice(eligible_tiles))
 
     def display(self):
         pygame.draw.circle(main_s,BLACK,self.tile.rect.center,(size+2))
@@ -120,15 +125,16 @@ class Faction(object):
     def get_centre_of_cells(self):
         all_x = [c.tile.x for c in self.cells]
         all_y = [c.tile.y for c in self.cells]
-        c_x = sum(all_x)//len(all_x)
-        c_y = sum(all_y)//len(all_y)
+        c_x = sum(all_x)//max(len(all_x),1)
+        c_y = sum(all_y)//max(len(all_y),1)
         return (c_x,c_y)
 
     def get_centre_of_cities(self):
         all_x = [c.tile.x for c in self.cities]
         all_y = [c.tile.y for c in self.cities]
-        c_x = sum(all_x)//len(all_x)
-        c_y = sum(all_y)//len(all_y)
+        #The max bit is so they don't divide by zero
+        c_x = sum(all_x)//max(len(all_x),1)
+        c_y = sum(all_y)//max(len(all_y),1)
         return (c_x,c_y)
 
     def split(self,new_faction):
@@ -138,9 +144,12 @@ class Faction(object):
             (c_cells[0] + c_cities[0])//2,
             (c_cells[1] + c_cities[1])//2
         )
-        for c in self.cells + self.cities:
+        for c in self.cells:
             if c.tile.x <= true_centre[0]:
                 c.join_faction(new_faction)
+        for c in self.cities:
+             if c.tile.x <= true_centre[0]:
+                 c.swap_faction(new_faction)
 
     def best_city_tiles(self):
         c1 = self.get_centre_of_cells()
@@ -167,7 +176,7 @@ class Cell(object):
         self.y = tile.y
         self.strength = random.randrange(10)
         self.tile.has_cell = self
-        if self.tile.has_city:
+        if self.tile.has_city and self.tile.has_city.faction != self.faction:
             self.tile.has_city.swap_faction(self.faction)
         self.faction.cells.append(self)
         cells.append(self)
@@ -215,21 +224,24 @@ class Cell(object):
         return retval
 
     def choose_tile(self):
-        neighbors = self.tile.get_neighbors()
-        possibles = [n for n in neighbors if isinstance(n,Ground)]
+        possibles = self.tile.get_adjacent_grounds()
         return random.choice(possibles)
 
+    def reproduce(self,tile):
+        Cell(self.faction,tile)
+
     def move(self):
-        #I'd like to simplify so there's only one self.die() call
         if self.death_check():
             self.die()
         else:
             t = self.choose_tile()
+            reproducing = False
             if not t.has_cell:
-                Cell(self.faction,t)
-            else:
-                if self.fight(t.has_cell):
-                    Cell(self.faction,t)
+                reproducing = True
+            elif self.fight(t.has_cell):
+                reproducing = True
+            if reproducing:
+                self.reproduce(t)
             if self.strength > 0:
                 self.strength -= 1
 
@@ -238,7 +250,20 @@ class Cell(object):
         pygame.draw.rect(main_s,self.color,self.tile.rect)
 
 class Attacker(Cell):
-    pass
+    def choose_tile(self):
+        grounds = self.tile.get_adjacent_grounds()
+        preferred = [
+            t for t in grounds if t.has_cell and t.has_cell.color != self.color
+        ]
+        if preferred:
+            possibles = preferred
+        else:
+            possibles = grounds
+        return random.choice(possibles)
+
+    def reproduce(self,tile):
+        Attacker(self.faction,tile)
+
 
 if map_file:
     with open("themap.txt") as map_string:
@@ -307,7 +332,7 @@ all_inputs = {
 
 game_loop,main_s = pgd_init(width,height,input_dict=all_inputs)
 
-for f in factions:
+for f in factions[0:2]:
     home_square = random.choice(
         [t for t in tiles if isinstance(t,Ground) and not t.has_city_buff]
     )
