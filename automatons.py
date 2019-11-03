@@ -203,28 +203,33 @@ class Cell(object):
 
     def death_check(self):
         retval = False
-        crowd = len([n for n in self.tile.get_neighbors() if n.has_cell])
+        neighbors = self.tile.get_neighbors()
+        crowd = len([n for n in neighbors if n.has_cell])
+        ocean_roll = random.randrange(len(neighbors))
         if crowd > max_neighbors:
             retval = True
         elif self.get_strength() == 0:
             retval = True
+        elif ocean_roll < len([n for n in neighbors if isinstance(n,Ocean)]):
+            retval = True
         return retval
 
+    def choose_tile(self):
+        neighbors = self.tile.get_neighbors()
+        possibles = [n for n in neighbors if isinstance(n,Ground)]
+        return random.choice(possibles)
+
     def move(self):
-        possibles = [n for n in self.tile.get_neighbors()]
         #I'd like to simplify so there's only one self.die() call
         if self.death_check():
             self.die()
         else:
-            t = random.choice(possibles)
-            if isinstance(t, Ground):
-                if not t.has_cell:
-                    Cell(self.faction,t)
-                else:
-                    if self.fight(t.has_cell):
-                        Cell(self.faction,t)
+            t = self.choose_tile()
+            if not t.has_cell:
+                Cell(self.faction,t)
             else:
-                self.die()
+                if self.fight(t.has_cell):
+                    Cell(self.faction,t)
             if self.strength > 0:
                 self.strength -= 1
 
@@ -232,6 +237,8 @@ class Cell(object):
     def display(self):
         pygame.draw.rect(main_s,self.color,self.tile.rect)
 
+class Attacker(Cell):
+    pass
 
 if map_file:
     with open("themap.txt") as map_string:
