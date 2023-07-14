@@ -70,12 +70,8 @@ class Tile:
     def get_direction(self,other):
         return ((self.x - other.x) < 0, (self.y - other.y) < 0)
 
-    def display(self):
-        pygame.draw.rect(main_s, self.color, self.rect)
-
 class Ground(Tile):
     def __init__(self, x, y):
-        self.color = 'green'
         Tile.__init__(self, x, y)
 
     def display(self):
@@ -85,16 +81,18 @@ class Ground(Tile):
             else:
                 pygame.draw.rect(main_s, 'green', self.rect)
         else:
-            super().display()
+            pygame.draw.rect(main_s, 'green', self.rect)
 
 class Ocean(Tile):
     def __init__(self, x, y):
-        self.color = 'blue'
         Tile.__init__(self, x, y)
 
     def stream_check(self):
         if len([n for n in self.get_neighbors() if isinstance(n,Ocean)]) == 1:
             flip(self.x, self.y)
+
+    def display(self):
+        pygame.draw.rect(main_s, 'blue', self.rect)
 
 class City:
     def __init__(self, faction: Faction, tile: Tile):
@@ -190,7 +188,9 @@ class Faction:
             return [cell.tile for cell in self.get_cells()]
 
     def make_city(self):
-        City(self,random.choice(self.best_city_tiles()))
+        candidates = self.best_city_tiles()
+        if len(candidates) > 0:
+            City(self, random.choice(candidates))
 
     def city_check(self):
         if (len(self.get_cells()) // city_threshold) > self.get_city_count():
@@ -330,6 +330,8 @@ def split_faction():
         new_color = get_random_color()
         new_faction = Faction(new_color)
         biggest.split(new_faction)
+    if simulation_paused:
+        set_all_zone_colors()
 
 def stream_check_mouse():
     x,y = pygame.mouse.get_pos()
