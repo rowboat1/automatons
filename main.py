@@ -51,6 +51,9 @@ class Tile:
     def set_zone_color(self, color: pygame.Color):
         self.zone_color = color
 
+    def get_zone_color(self):
+        return self.zone_color
+
     def get_neighbors(self):
         return self.tiles_in_radius(1)
 
@@ -196,7 +199,6 @@ class Faction:
 class Cell:
     def __init__(self,faction,tile):
         self.faction = faction
-        self.color = faction.color
         self.tile = tile
         self.x = tile.x
         self.y = tile.y
@@ -261,7 +263,7 @@ class Cell:
 
 
     def display(self):
-        pygame.draw.rect(main_s, self.color, self.tile.rect)
+        pygame.draw.rect(main_s, self.faction.color, self.tile.rect)
 
 
 if map_file:
@@ -387,11 +389,32 @@ def pause():
     if simulation_paused:
         set_all_zone_colors()
 
+def change_color_at_mouse():
+    # Behaviour only guaranteed when paused because the sim moves fast.
+    if simulation_paused:
+        x, y = pygame.mouse.get_pos()
+        x = x//size
+        y = y//size
+        try:
+            color = tiledict[x][y].get_zone_color()
+            if color != None:
+                # Should only be one, but you never know.
+                factions_with_color = [
+                    faction for faction in factions if faction.color == color
+                ]
+                for faction in factions_with_color:
+                    faction.color = get_random_color()
+            # Now need to repaint zone colors
+            set_all_zone_colors()
+        except:
+            pass
+
 all_inputs = {
     "r":gen_cell,
     "f":flip_at_mouse,
     "s":stream_check_mouse,
     "q":split_faction,
+    "c": change_color_at_mouse,
     "space": pause,
 }
 
