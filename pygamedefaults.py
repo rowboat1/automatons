@@ -24,8 +24,7 @@ def pgd_init(width,height,bg_color=(0,0,0),input_dict=None,on_quit=exit):
                         if the_key == "escape":
                             on_quit()
                         if input_dict != None:
-                            print(the_key)
                             if the_key in input_dict:
                                 input_dict[the_key]()
         return wrapper
-    return game_loop,main_s
+    return game_loop, main_s

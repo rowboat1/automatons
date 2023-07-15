@@ -1,29 +1,30 @@
 from __future__ import annotations
 import math
+from typing import Dict, List, Set, Tuple
 from pygamedefaults import *
 import random
 import mapping
 
-width,height = 800,800
+SCREENWIDTH, SCREENHEIGHT = 800, 800
 
 size = 8
 
-n_tiles_x = width//size
-n_tiles_y = height//size
+n_tiles_x = SCREENWIDTH // size
+n_tiles_y = SCREENHEIGHT // size
 
-map_file = "usa2.png"
+map_file = "australia.png"
 
 mapping.set_map(size, map_file)
 
 buffer = 1
-adj_size = size-buffer
+adj_size = size - buffer
 
 colors = ['red','magenta','white','orange']
-tiles = []
-tiledict = {x: [] for x in range(n_tiles_x)}
-cells = []
-cities = []
-factions = []
+tiles: List[Tile] = []
+tiledict: Dict[int, List[Tile]] = {x: [] for x in range(n_tiles_x)}
+cells: List[Cell] = []
+cities: List[City] = []
+factions: List[Faction] = []
 ground_chance = 0.8
 city_threshold = 200
 city_buff = 3
@@ -32,11 +33,11 @@ max_neighbors = 4
 simulation_paused = False
 
 class Tile:
-    def __init__(self,x,y):
+    def __init__(self, x: int, y: int) -> None:
         self.x = x
         self.y = y
-        self.has_cell = None
-        self.has_city = None
+        self.has_cell: Cell | None = None
+        self.has_city: City | None = None
         self.has_city_buff = None
         self.zone_color = None
         self.rect = pygame.Rect(
@@ -48,30 +49,36 @@ class Tile:
         tiledict[x].append(self)
         tiles.append(self)
 
-    def set_zone_color(self, color: pygame.Color):
+    def stream_check() -> None:
+        pass
+
+    def set_zone_color(self, color: pygame.Color) -> None:
         self.zone_color = color
 
-    def get_zone_color(self):
+    def get_zone_color(self) -> pygame.Color:
         return self.zone_color
 
-    def get_neighbors(self):
+    def get_neighbors(self) -> List[Tile]:
         return self.tiles_in_radius(1)
 
-    def tiles_in_radius(self,radius):
+    def tiles_in_radius(self, radius: int) -> List[Tile]:
         retval = []
-        x_start = max(0, self.x-radius)
-        x_end = min(n_tiles_x-1, self.x + radius)
+        x_start = max(0, self.x - radius)
+        x_end = min(n_tiles_x - 1, self.x + radius)
         y_start = max(0, self.y - radius)
-        y_end = min(n_tiles_y-1, self.y + radius)
+        y_end = min(n_tiles_y - 1, self.y + radius)
         for x in range(x_start, x_end+1):
-            retval += tiledict[x][y_start:y_end+1]
+            retval += tiledict[x][y_start: y_end + 1]
         return retval
 
-    def get_direction(self,other):
+    def get_direction(self, other: Tile) -> Tuple[int, int]:
         return ((self.x - other.x) < 0, (self.y - other.y) < 0)
+    
+    def display(self):
+        pass
 
 class Ground(Tile):
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
         Tile.__init__(self, x, y)
 
     def display(self):
@@ -84,10 +91,10 @@ class Ground(Tile):
             pygame.draw.rect(main_s, 'green', self.rect)
 
 class Ocean(Tile):
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
         Tile.__init__(self, x, y)
 
-    def stream_check(self):
+    def stream_check(self) -> None:
         if len([n for n in self.get_neighbors() if isinstance(n,Ocean)]) == 1:
             flip(self.x, self.y)
 
@@ -119,7 +126,7 @@ class City:
             Cell(self.faction,random.choice(eligible_tiles))
 
     def display(self):
-        pygame.draw.circle(main_s, 'black' , self.tile.rect.center, (size+2))
+        pygame.draw.circle(main_s, 'black', self.tile.rect.center, (size+2))
         pygame.draw.circle(
             main_s,
             self.faction.color,
@@ -128,50 +135,61 @@ class City:
         )
 
 class Faction:
-    def __init__(self,color):
+    def __init__(self, color: pygame.Color):
         self.color = color
         factions.append(self)
 
-    def get_cities(self):
+    def get_cities(self) -> List[City]:
         return [city for city in cities if city.faction == self]
 
-    def get_city_count(self):
+    def get_city_count(self) -> int:
         return len(self.get_cities())
 
-    def get_cells(self):
+    def get_cells(self) -> List[Cell]:
         return [cell for cell in cells if cell.faction == self]
 
-    def get_centre_of_cells(self):
+    def get_centre_of_cells(self) -> Tuple[int, int]:
         all_x = [c.tile.x for c in self.get_cells()]
         all_y = [c.tile.y for c in self.get_cells()]
         c_x = sum(all_x) // len(all_x)
         c_y = sum(all_y) // len(all_y)
         return (c_x, c_y)
 
-    def get_centre_of_cities(self):
+    def get_centre_of_cities(self) -> Tuple[int, int]:
         all_x = [c.tile.x for c in self.get_cities()]
         all_y = [c.tile.y for c in self.get_cities()]
         c_x = sum(all_x) // len(all_x)
         c_y = sum(all_y) // len(all_y)
         return (c_x, c_y)
 
-    def split(self, new_faction: Faction):
+    def split(self, new_faction: Faction) -> None:
         centre_of_cells = self.get_centre_of_cells()
         cities = self.get_cities()
         cells = self.get_cells()
+        
         if len(cities) > 0:
             centre_of_cities = self.get_centre_of_cities()
             true_centre = (
-                (centre_of_cells[0] + centre_of_cities[0])//2,
-                (centre_of_cells[1] + centre_of_cities[1])//2
+                (centre_of_cells[0] + centre_of_cities[0]) // 2,
+                (centre_of_cells[1] + centre_of_cities[1]) // 2
             )
         else:
             true_centre = centre_of_cells
-        for c in cells + cities:
-            if c.tile.x <= true_centre[0]:
-                c.join_faction(new_faction)
+        # Find the borders of this faction's domain
+        all_entities: List[City | Cell] = cells + cities
+        xcoords: List[int] = list(map(lambda c: c.tile.x, all_entities))
+        ycoords: List[int] = list(map(lambda c: c.tile.y, all_entities))
+        width = max(xcoords) - min(xcoords)
+        height = max(ycoords) - min(ycoords)
+        for c in all_entities:
+            if width > height:
+                if c.tile.x <= true_centre[0]:
+                    c.join_faction(new_faction)
+            else:
+                if c.tile.y <= true_centre[1]:
+                    c.join_faction(new_faction)
 
-    def best_city_tiles(self):
+    def best_city_tiles(self) -> List[Tile]:
         c1 = self.get_centre_of_cells()
         centre_of_cells = tiledict[c1[0]][c1[1]]
         if len(self.get_cities()) > 0:
@@ -197,36 +215,42 @@ class Faction:
             self.make_city()
 
 class Cell:
-    def __init__(self,faction,tile):
+    def __init__(self, 
+                 faction: Faction, 
+                 tile: Tile, 
+                 parent: Cell | None = None) -> None:
         self.faction = faction
         self.tile = tile
         self.x = tile.x
         self.y = tile.y
-        self.strength = random.randrange(10)
+        bonus = 0
+        if parent != None:
+            bonus += parent.get_strength() // 2 
+        self.strength = random.randrange(10) + bonus
         self.tile.has_cell = self
         if self.tile.has_city:
             self.tile.has_city.swap_faction(self.faction)
         cells.append(self)
 
-    def join_faction(self,new_faction):
+    def join_faction(self, new_faction: Faction) -> None:
         self.faction = new_faction
 
-    def die(self):
+    def die(self) -> None:
         cells.remove(self)
         self.tile.has_cell = None
 
-    def get_strength(self):
-        retval = self.strength
+    def get_strength(self) -> int:
+        current_strength = self.strength
         if self.tile.has_city_buff == self.faction:
-            retval += city_buff
-        return retval
+            current_strength += city_buff
+        return current_strength
 
     def fight(self, target: Cell) -> bool:
         if self.get_strength() > target.get_strength():
             target.die()
             retval = True
         elif self.strength == target.strength:
-            a = random.choice([self,target])
+            a = random.choice([self, target])
             a.die()
             retval = a == target
         else:
@@ -235,34 +259,39 @@ class Cell:
         return retval
 
     def death_check(self) -> bool:
-        retval = False
-        crowd = len([n for n in self.tile.get_neighbors() if n.has_cell])
-        if crowd > max_neighbors:
-            retval = True
+        number_of_cells_on_neighbouring_tiles = len(
+            [n for n in self.tile.get_neighbors() if n.has_cell])
+        if number_of_cells_on_neighbouring_tiles > max_neighbors:
+            return True
         elif self.get_strength() == 0:
-            retval = True
-        return retval
+            return True
+        return False
+    
+    def decrement_strength(self) -> None:
+        self.strength = max(self.strength - 1, 0)
 
-    def move(self):
+    def increment_strength(self, amount: int = 1) -> None:
+        self.strength += amount
+
+    def move(self) -> None:
         possibles = [n for n in self.tile.get_neighbors()]
-        #I'd like to simplify so there's only one self.die() call
         if self.death_check():
             self.die()
         else:
             t = random.choice(possibles)
             if isinstance(t, Ground):
                 if not t.has_cell:
-                    Cell(self.faction, t)
+                    Cell(self.faction, t, self)
                 else:
-                    if self.fight(t.has_cell):
-                        Cell(self.faction, t)
-            else:
-                self.die()
-            if self.strength > 0:
-                self.strength -= 1
+                    if t.has_cell.faction != self.faction:
+                        if self.fight(t.has_cell):
+                            Cell(self.faction, t, self)
+                    else:
+                        t.has_cell.increment_strength()
+            if self.get_strength() > 0:
+                self.decrement_strength()
 
-
-    def display(self):
+    def display(self) -> None:
         pygame.draw.rect(main_s, self.faction.color, self.tile.rect)
 
 
@@ -289,7 +318,7 @@ else:
 for c in colors:
     Faction(c)
 
-def flip(x,y):
+def flip(x: int, y: int) -> None:
     target = tiledict[x][y]
     if isinstance(target,Ground):
         tiledict[x][y] = Ocean(x,y)
@@ -297,13 +326,13 @@ def flip(x,y):
         tiledict[x][y] = Ground(x,y)
     tiles.remove(target)
 
-def flip_at_mouse():
+def flip_at_mouse() -> None:
     x,y = pygame.mouse.get_pos()
-    x = x//size
-    y = y//size
-    flip(x,y)
+    x = x // size
+    y = y // size
+    flip(x, y)
 
-def get_random_color():
+def get_random_color() -> pygame.Color:
     new_color = (
         random.randrange(255), 
         random.randrange(255), 
@@ -312,13 +341,12 @@ def get_random_color():
     # Don't want these colours to be too near green or blue
     d1 = math.sqrt(new_color[0]**2 + (255 - new_color[1])**2 + new_color[2]**2)
     d2 = math.sqrt(new_color[0]**2 + new_color[1]**2 + (255 - new_color[2])**2)
-    print(d1, d2)
     if d1 < 200 or d2 < 200:
         return get_random_color()
     else:
         return new_color
 
-def split_faction():
+def split_faction() -> None:
     dead_colours = [
         faction for faction in factions if len(faction.get_cells()) == 0
     ]
@@ -333,10 +361,10 @@ def split_faction():
     if simulation_paused:
         set_all_zone_colors()
 
-def stream_check_mouse():
+def stream_check_mouse() -> None:
     x,y = pygame.mouse.get_pos()
-    x = x//size
-    y = y//size
+    x = x // size
+    y = y // size
     try:
         tiledict[x][y].stream_check()
     except:
@@ -352,31 +380,35 @@ def gen_cell():
 
 def set_all_zone_colors():
     # Initiate a dictionary with each ground tile...
-    all_grounds = [tile for tile in tiles if isinstance(tile, Ground)]
-    claim_dict = {tile: set() for tile in all_grounds}
-    unclaimed_tiles = set(all_grounds)
+    all_grounds: List[Ground] = [
+        tile for tile in tiles if isinstance(tile, Ground)
+    ]
+    claims: Dict[Tile: Set[Faction]] = {tile: set() for tile in all_grounds}
+    unclaimed_tiles: Set[Tile] = set(all_grounds)
     
     # Now, we will take the set of all inhabited tiles 
     # and claim them for their respective factions
-    seen_this_turn = set()
+    seen_this_turn: Set[Tile] = set()
     for cell in cells:
         seen_this_turn.add(cell.tile)
-        claim_dict[cell.tile] = set([cell.faction])
+        claims[cell.tile] = set([cell.faction])
     
     # Now, check all the neighbours of what we saw last turn
     while len(seen_this_turn) > 0:
         unclaimed_tiles -= seen_this_turn
-        seen_last_turn = seen_this_turn.copy()
+        seen_last_turn: Set[Tile] = seen_this_turn.copy()
         seen_this_turn = set()
         for tile in seen_last_turn:
-            if len(claim_dict[tile]) == 1:
+            if len(claims[tile]) == 1:
                 claimables = set(tile.get_neighbors()) & unclaimed_tiles
-                faction = list(claim_dict[tile])[0]
+                faction = list(claims[tile])[0]
                 for tile in claimables:
-                    claim_dict[tile].add(faction)
+                    claims[tile].add(faction)
                 seen_this_turn |= claimables
-    
-    for tile, factions in claim_dict.items():
+
+    tile: Tile
+    factions: Set[Faction]
+    for tile, factions in claims.items():
         if len(factions) == 1:
             tile.set_zone_color(list(factions)[0].color)
         elif len(factions) > 1:
@@ -395,8 +427,8 @@ def change_color_at_mouse():
     # Behaviour only guaranteed when paused because the sim moves fast.
     if simulation_paused:
         x, y = pygame.mouse.get_pos()
-        x = x//size
-        y = y//size
+        x = x // size
+        y = y // size
         try:
             color = tiledict[x][y].get_zone_color()
             if color != None:
@@ -420,7 +452,7 @@ all_inputs = {
     "space": pause,
 }
 
-game_loop,main_s = pgd_init(width,height,input_dict=all_inputs)
+game_loop, main_s = pgd_init(SCREENWIDTH, SCREENHEIGHT, input_dict = all_inputs)
 
 for f in factions:
     home_square = random.choice(
